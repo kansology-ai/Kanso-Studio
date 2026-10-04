@@ -1,15 +1,22 @@
 {
   "name": "kanso-studio",
   "version": "1.0.0",
-  "description": "My Remotion video",
+  "description": "Kanso Studio: programmatic motion graphics built with Remotion",
   "repository": {},
   "license": "UNLICENSED",
   "private": true,
   "dependencies": {
     "@remotion/cli": "4.0.532",
+    "@remotion/fonts": "4.0.532",
+    "@remotion/media": "4.0.532",
+    "@remotion/media-utils": "4.0.532",
+    "@remotion/shapes": "4.0.532",
+    "@remotion/transitions": "4.0.532",
+    "@remotion/zod-types": "4.0.532",
     "react": "19.2.3",
     "react-dom": "19.2.3",
-    "remotion": "4.0.532"
+    "remotion": "4.0.532",
+    "zod": "4.5.4"
   },
   "devDependencies": {
     "@remotion/eslint-config-flat": "4.0.532",
@@ -21,8 +28,11 @@
   },
   "scripts": {
     "dev": "remotion studio",
+    "render": "remotion render Showcase out/showcase.mp4",
+    "still": "remotion still Showcase out/showcase.png --frame=75",
+    "new": "node scripts/new-composition.mjs",
     "build": "remotion bundle",
-    "upgrade": "remotion upgrade",
-    "lint": "eslint src && tsc"
+    "lint": "eslint src && tsc",
+    "upgrade": "remotion upgrade"
   }
 }
