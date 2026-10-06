@@ -50,7 +50,7 @@ src/
   lib/                  animation presets/helpers, resolution-independent layout
   components/           AnimatedTitle, Eyebrow, Typewriter, Background, FloatingShapes, FeatureCard, AudioSpectrum
   compositions/Showcase sample video + scenes/
-  compositions/QuoteWallpaper  phone wallpaper: still (BreachWallpaper) + animated video (BreachWallpaperAnimated)
+  compositions/QuoteWallpaper  phone wallpaper: still, 10 s animation, and 3 s iPhone Live Photo cut (BreachWallpaperLive)
 public/                 audio/, images/, fonts/ (reference with staticFile())
 scripts/                new-composition scaffolder
 .agents/skills/         official Remotion agent skills (symlinked into .claude/skills/)

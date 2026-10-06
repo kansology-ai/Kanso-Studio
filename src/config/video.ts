@@ -47,6 +47,18 @@ export const QUOTE_WALLPAPER_TIMING = {
   durationSeconds: 10,
 } as const;
 
+/**
+ * Cue points for the 3 s Live Photo cut, in seconds. The text is already in
+ * place; only the spark and crack move, and the clip ends on the finished
+ * still so the Live Photo can rest on its last frame.
+ */
+export const LIVE_PHOTO_TIMING = {
+  sparkAt: 0.15,
+  crackAt: 0.3,
+  crackSeconds: 2.2,
+  durationSeconds: 3,
+} as const;
+
 export const secondsToFrames = (seconds: number, fps: number): number =>
   Math.max(1, Math.round(seconds * fps));
 

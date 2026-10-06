@@ -9,7 +9,7 @@ import {
   useVideoConfig,
 } from "remotion";
 import { z } from "zod";
-import { QUOTE_WALLPAPER_TIMING } from "../../config/video";
+import { LIVE_PHOTO_TIMING, QUOTE_WALLPAPER_TIMING } from "../../config/video";
 import { CLAMP, EASE, mix } from "../../lib/animation";
 import { useLayout } from "../../lib/layout";
 import { colors, fonts } from "../../theme";
@@ -18,9 +18,12 @@ import { colors, fonts } from "../../theme";
  * Minimal quote wallpaper: two parallel serif lines joined by a small
  * connector, with a single gold hairline crack that branches as it falls.
  *
- * `animated: false` renders the finished image (registered as a <Still>).
- * `animated: true` reveals the text, ignites the spark and spreads the crack,
- * following the cues in QUOTE_WALLPAPER_TIMING.
+ * `mode` picks the variant:
+ * - "still": the finished image (registered as a <Still>).
+ * - "reveal": text reveals, the spark ignites and the crack spreads, then the
+ *   light breathes (QUOTE_WALLPAPER_TIMING).
+ * - "livePhoto": a 3 s cut for iPhone Live Photos. Only the spark and crack
+ *   move, and it ends exactly on the still (LIVE_PHOTO_TIMING).
  */
 export const quoteWallpaperSchema = z.object({
   lineOne: z.string(),
@@ -30,7 +33,9 @@ export const quoteWallpaperSchema = z.object({
   detailTwo: z.string(),
   accentColor: zColor(),
   crackSeed: z.string().describe("Change to get a differently shaped crack"),
-  animated: z.boolean().describe("Off = finished still image"),
+  mode: z
+    .enum(["still", "reveal", "livePhoto"])
+    .describe("still image, full reveal, or 3 s Live Photo cut"),
 });
 
 type QuoteWallpaperProps = z.infer<typeof quoteWallpaperSchema>;
@@ -156,23 +161,35 @@ export const QuoteWallpaper: React.FC<QuoteWallpaperProps> = ({
   detailTwo,
   accentColor,
   crackSeed,
-  animated,
+  mode,
 }) => {
   const frame = useCurrentFrame();
   const { fps, durationInFrames } = useVideoConfig();
   const { width, height, px } = useLayout();
   const T = QUOTE_WALLPAPER_TIMING;
   const seconds = frame / fps;
+  const isStill = mode === "still";
+  const isReveal = mode === "reveal";
+  const cue = isReveal
+    ? {
+        sparkAt: T.sparkAt,
+        crackAt: T.sparkAt + 0.2,
+        crackSeconds: T.crackSeconds,
+      }
+    : LIVE_PHOTO_TIMING;
 
-  /** 0 → 1 as an element settles; always 1 for the still image. */
-  const reveal = (
+  /** 0 → 1 between two moments; always 1 for the still image. */
+  const progressBetween = (
     at: number,
-    duration: number = T.textRevealSeconds,
+    duration: number,
     easing: (t: number) => number = EASE.out,
   ) =>
-    animated
-      ? interpolate(seconds, [at, at + duration], [0, 1], { ...CLAMP, easing })
-      : 1;
+    isStill
+      ? 1
+      : interpolate(seconds, [at, at + duration], [0, 1], { ...CLAMP, easing });
+  /** Text only animates in the full reveal; otherwise it is already there. */
+  const textReveal = (at: number) =>
+    isReveal ? progressBetween(at, T.textRevealSeconds) : 1;
 
   const sparkX = width / 2;
   const sparkY = height * 0.655;
@@ -183,38 +200,43 @@ export const QuoteWallpaper: React.FC<QuoteWallpaperProps> = ({
   const crackReach = Math.max(...branches.map((b) => b.start + b.length));
 
   // Spark: pops in with a small overshoot, flashes, then settles.
-  const ignite = animated
-    ? spring({
+  const ignite = isStill
+    ? 1
+    : spring({
         frame,
         fps,
-        delay: T.sparkAt * fps,
+        delay: cue.sparkAt * fps,
         config: { damping: 12, stiffness: 140 },
-      })
-    : 1;
-  const flash = animated
-    ? interpolate(
+      });
+  const flash = isStill
+    ? 0
+    : interpolate(
         seconds,
-        [T.sparkAt, T.sparkAt + 0.12, T.sparkAt + 1],
+        [cue.sparkAt, cue.sparkAt + 0.12, cue.sparkAt + 1],
         [0, 1, 0],
         CLAMP,
-      )
-    : 0;
-  const flareSpread = reveal(T.sparkAt, 1.3);
+      );
+  const flareSpread = progressBetween(cue.sparkAt, 1.3);
 
   // Crack front: builds slowly, races, then eases into the finest tips.
-  const crackProgress = reveal(T.sparkAt + 0.2, T.crackSeconds, EASE.inOut);
+  const crackProgress = progressBetween(
+    cue.crackAt,
+    cue.crackSeconds,
+    EASE.inOut,
+  );
   const crackFront = crackProgress * crackReach;
 
-  // Once settled, the light breathes gently (static image: no breathing).
-  const settleAt = T.sparkAt + 0.2 + T.crackSeconds;
-  const breath = animated
+  // Once settled, the light breathes gently (full reveal only, so the still
+  // and the Live Photo's last frame stay identical).
+  const settleAt = cue.crackAt + cue.crackSeconds;
+  const breath = isReveal
     ? Math.sin(((seconds - settleAt) / T.breathSeconds) * Math.PI * 2) *
       interpolate(seconds, [settleAt, settleAt + 1], [0, 1], CLAMP)
     : 0;
   const glowLevel = 1 + 0.18 * breath;
 
-  // Slow push-in across the whole clip.
-  const push = animated
+  // Slow push-in across the whole clip (full reveal only).
+  const push = isReveal
     ? interpolate(frame, [0, durationInFrames - 1], [1.035, 1], {
         ...CLAMP,
         easing: EASE.out,
@@ -249,7 +271,7 @@ export const QuoteWallpaper: React.FC<QuoteWallpaperProps> = ({
     translate: `0 ${(1 - p) * px(24)}px`,
     filter: `blur(${(1 - p) * px(6)}px)`,
   });
-  const connectorP = reveal(T.connectorAt);
+  const connectorP = textReveal(T.connectorAt);
   const hairline = (origin: string): React.CSSProperties => ({
     width: px(56),
     height: Math.max(1, px(1)),
@@ -400,8 +422,8 @@ export const QuoteWallpaper: React.FC<QuoteWallpaperProps> = ({
             textAlign: "center",
           }}
         >
-          <div style={capsStyle(reveal(T.lineOneAt))}>{lineOne}</div>
-          <div style={detailStyle(reveal(T.detailOneAt))}>{detailOne}</div>
+          <div style={capsStyle(textReveal(T.lineOneAt))}>{lineOne}</div>
+          <div style={detailStyle(textReveal(T.detailOneAt))}>{detailOne}</div>
           <div
             style={{
               display: "flex",
@@ -427,8 +449,8 @@ export const QuoteWallpaper: React.FC<QuoteWallpaperProps> = ({
             </div>
             <div style={hairline("left center")} />
           </div>
-          <div style={capsStyle(reveal(T.lineTwoAt))}>{lineTwo}</div>
-          <div style={detailStyle(reveal(T.detailTwoAt))}>{detailTwo}</div>
+          <div style={capsStyle(textReveal(T.lineTwoAt))}>{lineTwo}</div>
+          <div style={detailStyle(textReveal(T.detailTwoAt))}>{detailTwo}</div>
         </div>
       </AbsoluteFill>
 

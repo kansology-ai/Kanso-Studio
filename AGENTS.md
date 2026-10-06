@@ -23,6 +23,7 @@ The official agent skills (`remotion-dev/skills`) are installed in `.agents/skil
 | Render one frame (visual check) | `npx remotion still Showcase out/frame.png --frame=90` |
 | Render a wallpaper / still image | `npx remotion still BreachWallpaper out/wallpaper.png` (add `--width=1080 --height=1920` for other phones) |
 | Render the animated wallpaper | `npx remotion render BreachWallpaperAnimated out/wallpaper.mp4 --crf=16` |
+| Render the 3 s iPhone Live Photo cut | `npx remotion render BreachWallpaperLive out/wallpaper-live.mp4 --crf=16` (convert on the iPhone with a video-to-Live-Photo app) |
 | Render a few frames as images | `npx remotion render Showcase out/frames --sequence --image-format=jpeg --frames=30,90,150` |
 | One-off format override | `npx remotion render Showcase out/vertical.mp4 --width=1080 --height=1920` |
 | Override props from the CLI | `npx remotion render Showcase out/hello.mp4 --props='{"title":"Hello"}'` (merged over `defaultProps`) |
@@ -54,7 +55,7 @@ src/
     Showcase/
       Showcase.tsx         parent video: TransitionSeries of scenes + optional audio, zod schema
       scenes/              one file per scene (IntroScene, FeaturesScene, OutroScene)
-    QuoteWallpaper/        quote wallpaper: <Still> BreachWallpaper + animated BreachWallpaperAnimated (cues in QUOTE_WALLPAPER_TIMING)
+    QuoteWallpaper/        quote wallpaper, `mode` prop: still (BreachWallpaper), reveal (BreachWallpaperAnimated), livePhoto (BreachWallpaperLive)
 public/
   audio/  images/          put assets here; reference with staticFile("audio/track.mp3")
   fonts/                   bundled .woff2 files + OFL licenses
