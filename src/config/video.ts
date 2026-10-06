@@ -30,6 +30,23 @@ export const SHOWCASE_TIMING = {
   transitionSeconds: 0.7,
 } as const;
 
+/** Cue points for the animated quote wallpaper, in seconds from the start. */
+export const QUOTE_WALLPAPER_TIMING = {
+  lineOneAt: 0.4,
+  detailOneAt: 1.1,
+  connectorAt: 1.8,
+  lineTwoAt: 2.5,
+  detailTwoAt: 3.2,
+  /** Each text element takes this long to settle. */
+  textRevealSeconds: 1.4,
+  sparkAt: 4.1,
+  /** The crack starts just after the spark and spreads for this long. */
+  crackSeconds: 3,
+  /** Breathing period of the light once everything has settled. */
+  breathSeconds: 3.2,
+  durationSeconds: 10,
+} as const;
+
 export const secondsToFrames = (seconds: number, fps: number): number =>
   Math.max(1, Math.round(seconds * fps));
 

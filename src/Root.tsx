@@ -2,6 +2,7 @@ import type React from "react";
 import { Composition, Folder, Still } from "remotion";
 import {
   FORMATS,
+  QUOTE_WALLPAPER_TIMING,
   SHOWCASE_TIMING,
   VIDEO,
   getShowcaseDuration,
@@ -115,6 +116,28 @@ export const RemotionRoot: React.FC = () => {
             detailTwo: "of other rules.",
             accentColor: "#C9A45C",
             crackSeed: "fracture",
+            animated: false,
+          }}
+        />
+        <Composition
+          id="BreachWallpaperAnimated"
+          component={QuoteWallpaper}
+          schema={quoteWallpaperSchema}
+          {...FORMATS.phoneWallpaper}
+          fps={VIDEO.fps}
+          durationInFrames={secondsToFrames(
+            QUOTE_WALLPAPER_TIMING.durationSeconds,
+            VIDEO.fps,
+          )}
+          defaultProps={{
+            lineOne: "The breach",
+            detailOne: "of one rule",
+            connector: "inevitably leads to",
+            lineTwo: "The breach",
+            detailTwo: "of other rules.",
+            accentColor: "#C9A45C",
+            crackSeed: "fracture",
+            animated: true,
           }}
         />
       </Folder>
