@@ -50,6 +50,7 @@ src/
   lib/                  animation presets/helpers, resolution-independent layout
   components/           AnimatedTitle, Eyebrow, Typewriter, Background, FloatingShapes, FeatureCard, AudioSpectrum
   compositions/Showcase sample video + scenes/
+  compositions/QuoteWallpaper  phone wallpaper still (npx remotion still BreachWallpaper out/wallpaper.png)
 public/                 audio/, images/, fonts/ (reference with staticFile())
 scripts/                new-composition scaffolder
 .agents/skills/         official Remotion agent skills (symlinked into .claude/skills/)

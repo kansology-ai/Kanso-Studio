@@ -1,11 +1,16 @@
 import type React from "react";
-import { Composition, Folder } from "remotion";
+import { Composition, Folder, Still } from "remotion";
 import {
+  FORMATS,
   SHOWCASE_TIMING,
   VIDEO,
   getShowcaseDuration,
   secondsToFrames,
 } from "./config/video";
+import {
+  QuoteWallpaper,
+  quoteWallpaperSchema,
+} from "./compositions/QuoteWallpaper/QuoteWallpaper";
 import { Showcase, showcaseSchema } from "./compositions/Showcase/Showcase";
 import { FeaturesScene } from "./compositions/Showcase/scenes/FeaturesScene";
 import { IntroScene } from "./compositions/Showcase/scenes/IntroScene";
@@ -91,6 +96,25 @@ export const RemotionRoot: React.FC = () => {
             command: "npx remotion render Showcase",
             accentColor: "#FF5A36",
             secondaryColor: "#7C8CFF",
+          }}
+        />
+      </Folder>
+
+      {/* Single-frame images: render with `npx remotion still <id>`. */}
+      <Folder name="Wallpapers">
+        <Still
+          id="BreachWallpaper"
+          component={QuoteWallpaper}
+          schema={quoteWallpaperSchema}
+          {...FORMATS.phoneWallpaper}
+          defaultProps={{
+            lineOne: "The breach",
+            detailOne: "of one rule",
+            connector: "inevitably leads to",
+            lineTwo: "The breach",
+            detailTwo: "of other rules.",
+            accentColor: "#C9A45C",
+            crackSeed: "fracture",
           }}
         />
       </Folder>

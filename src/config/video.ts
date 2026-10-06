@@ -18,6 +18,8 @@ export const FORMATS = {
   landscape4k: { width: 3840, height: 2160 },
   portrait1080: { width: 1080, height: 1920 },
   square1080: { width: 1080, height: 1080 },
+  /** Phone wallpaper (iPhone Pro Max native; crops cleanly on Android). */
+  phoneWallpaper: { width: 1290, height: 2796 },
 } as const;
 
 /** Scene lengths for the Showcase composition, in seconds. */

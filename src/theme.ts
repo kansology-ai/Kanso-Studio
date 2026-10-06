@@ -31,12 +31,24 @@ const FONT_FILES = [
     weight: "500",
     file: "fonts/jetbrains-mono-latin-500-normal.woff2",
   },
+  {
+    family: "Cormorant Garamond",
+    weight: "500",
+    file: "fonts/cormorant-garamond-latin-500-normal.woff2",
+  },
+  {
+    family: "Cormorant Garamond",
+    weight: "400",
+    style: "italic",
+    file: "fonts/cormorant-garamond-latin-400-italic.woff2",
+  },
 ] as const;
 
 for (const font of FONT_FILES) {
   loadFont({
     family: font.family,
     weight: font.weight,
+    style: "style" in font ? font.style : "normal",
     url: staticFile(font.file),
   });
 }
@@ -45,6 +57,8 @@ export const fonts = {
   display: "Sora, system-ui, sans-serif",
   body: "Inter, system-ui, sans-serif",
   mono: "'JetBrains Mono', ui-monospace, monospace",
+  /** Editorial serif for quotes and luxury-style typography. */
+  serif: "'Cormorant Garamond', Georgia, serif",
 } as const;
 
 export const colors = {
@@ -57,4 +71,8 @@ export const colors = {
   vermilion: "#FF5A36",
   indigo: "#7C8CFF",
   amber: "#FFB547",
+  /** Warm near-black, for gold-on-black designs. */
+  inkWarm: "#0A0908",
+  gold: "#C9A45C",
+  goldLight: "#F3DEAE",
 } as const;
