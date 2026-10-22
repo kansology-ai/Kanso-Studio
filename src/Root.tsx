@@ -14,6 +14,22 @@ import {
   quoteWallpaperSchema,
 } from "./compositions/QuoteWallpaper/QuoteWallpaper";
 import { Showcase, showcaseSchema } from "./compositions/Showcase/Showcase";
+import {
+  TrainingSeason,
+  trainingSeasonSchema,
+} from "./compositions/TrainingSeason/TrainingSeason";
+import { BallsScene } from "./compositions/TrainingSeason/scenes/BallsScene";
+import { ChalkScene } from "./compositions/TrainingSeason/scenes/ChalkScene";
+import { JerseyScene } from "./compositions/TrainingSeason/scenes/JerseyScene";
+import { MegaphoneScene } from "./compositions/TrainingSeason/scenes/MegaphoneScene";
+import { RibbonScene } from "./compositions/TrainingSeason/scenes/RibbonScene";
+import { ScoreboardScene } from "./compositions/TrainingSeason/scenes/ScoreboardScene";
+import { TicketScene } from "./compositions/TrainingSeason/scenes/TicketScene";
+import { VaultScene } from "./compositions/TrainingSeason/scenes/VaultScene";
+import {
+  TRAINING_SEASON_TIMING,
+  sceneFrames,
+} from "./compositions/TrainingSeason/timing";
 import { FeaturesScene } from "./compositions/Showcase/scenes/FeaturesScene";
 import { IntroScene } from "./compositions/Showcase/scenes/IntroScene";
 import { OutroScene } from "./compositions/Showcase/scenes/OutroScene";
@@ -161,6 +177,117 @@ export const RemotionRoot: React.FC = () => {
             crackSeed: "fracture",
             mode: "livePhoto",
           }}
+        />
+      </Folder>
+
+      {/*
+        9:16 lyric reel. Lyric fields hold placeholder lines: replace them
+        with the song's lines (same number of " / " slots per field).
+      */}
+      <Composition
+        id="TrainingSeason"
+        component={TrainingSeason}
+        schema={trainingSeasonSchema}
+        {...VIDEO}
+        {...FORMATS.portrait1080}
+        durationInFrames={secondsToFrames(
+          TRAINING_SEASON_TIMING.durationSeconds,
+          VIDEO.fps,
+        )}
+        defaultProps={{
+          jersey: "READY / SET / GO",
+          vault: "I",
+          ribbonA: "RUN / THE LAPS / AND HOLD / THE LINE",
+          ribbonB: "faster / than / we've / ever / run",
+          ribbonC: "EYES ON / THE SCOREBOARD",
+          ribbonD: "Keeps / the pace / and takes / the lead",
+          tickets: "When / we're / in-vin-ci-ble",
+          chalk: "Coach's / calling / every / single / play",
+          megaphone: "celebration / overtime",
+          scoreboard: "'cause / TRAINING / SEASON / 's",
+          balls: "over",
+          audioSrc: "",
+          audioStartSeconds: 0,
+          audioVolume: 1,
+          showHud: true,
+          showSafeZones: false,
+        }}
+      />
+
+      {/* Each TrainingSeason scene on its own timeline (connected compositions). */}
+      <Folder name="TrainingSeason-Scenes">
+        <Composition
+          id="TS-Jersey"
+          component={JerseyScene}
+          {...VIDEO}
+          {...FORMATS.portrait1080}
+          durationInFrames={sceneFrames("jersey", VIDEO.fps).durationInFrames}
+          defaultProps={{ words: "READY / SET / GO" }}
+        />
+        <Composition
+          id="TS-Vault"
+          component={VaultScene}
+          {...VIDEO}
+          {...FORMATS.portrait1080}
+          durationInFrames={sceneFrames("vault", VIDEO.fps).durationInFrames}
+          defaultProps={{ words: "I" }}
+        />
+        <Composition
+          id="TS-Ribbon"
+          component={RibbonScene}
+          {...VIDEO}
+          {...FORMATS.portrait1080}
+          durationInFrames={sceneFrames("ribbon", VIDEO.fps).durationInFrames}
+          defaultProps={{
+            lineA: "RUN / THE LAPS / AND HOLD / THE LINE",
+            lineB: "faster / than / we've / ever / run",
+            lineC: "EYES ON / THE SCOREBOARD",
+            lineD: "Keeps / the pace / and takes / the lead",
+          }}
+        />
+        <Composition
+          id="TS-Tickets"
+          component={TicketScene}
+          {...VIDEO}
+          {...FORMATS.portrait1080}
+          durationInFrames={sceneFrames("tickets", VIDEO.fps).durationInFrames}
+          defaultProps={{ words: "When / we're / in-vin-ci-ble" }}
+        />
+        <Composition
+          id="TS-Chalk"
+          component={ChalkScene}
+          {...VIDEO}
+          {...FORMATS.portrait1080}
+          durationInFrames={sceneFrames("chalk", VIDEO.fps).durationInFrames}
+          defaultProps={{ words: "Coach's / calling / every / single / play" }}
+        />
+        <Composition
+          id="TS-Megaphone"
+          component={MegaphoneScene}
+          {...VIDEO}
+          {...FORMATS.portrait1080}
+          durationInFrames={
+            sceneFrames("megaphone", VIDEO.fps).durationInFrames
+          }
+          defaultProps={{ words: "celebration / overtime" }}
+        />
+        <Composition
+          id="TS-Scoreboard"
+          component={ScoreboardScene}
+          {...VIDEO}
+          {...FORMATS.portrait1080}
+          durationInFrames={
+            sceneFrames("scoreboard", VIDEO.fps).durationInFrames
+          }
+          defaultProps={{ words: "'cause / TRAINING / SEASON / 's" }}
+        />
+        <Composition
+          id="TS-Balls"
+          component={BallsScene}
+          {...VIDEO}
+          {...FORMATS.portrait1080}
+          durationInFrames={sceneFrames("balls", VIDEO.fps).durationInFrames}
+          defaultProps={{ words: "over" }}
         />
       </Folder>
 

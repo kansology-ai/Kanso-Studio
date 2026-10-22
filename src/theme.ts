@@ -42,6 +42,54 @@ const FONT_FILES = [
     style: "italic",
     file: "fonts/cormorant-garamond-latin-400-italic.woff2",
   },
+  {
+    family: "Graduate",
+    weight: "400",
+    file: "fonts/graduate-latin-400-normal.woff2",
+  },
+  {
+    family: "Big Shoulders Display",
+    weight: "800",
+    file: "fonts/big-shoulders-display-latin-800-normal.woff2",
+  },
+  {
+    family: "Big Shoulders Display",
+    weight: "900",
+    file: "fonts/big-shoulders-display-latin-900-normal.woff2",
+  },
+  {
+    family: "Barlow Condensed",
+    weight: "600",
+    file: "fonts/barlow-condensed-latin-600-normal.woff2",
+  },
+  {
+    family: "Barlow Condensed",
+    weight: "700",
+    style: "italic",
+    file: "fonts/barlow-condensed-latin-700-italic.woff2",
+  },
+  {
+    family: "Barlow Condensed",
+    weight: "800",
+    style: "italic",
+    file: "fonts/barlow-condensed-latin-800-italic.woff2",
+  },
+  {
+    family: "Barlow Condensed",
+    weight: "900",
+    style: "italic",
+    file: "fonts/barlow-condensed-latin-900-italic.woff2",
+  },
+  {
+    family: "Caveat Brush",
+    weight: "400",
+    file: "fonts/caveat-brush-latin-400-normal.woff2",
+  },
+  {
+    family: "Doto",
+    weight: "900",
+    file: "fonts/doto-latin-900-normal.woff2",
+  },
 ] as const;
 
 for (const font of FONT_FILES) {
@@ -59,6 +107,16 @@ export const fonts = {
   mono: "'JetBrains Mono', ui-monospace, monospace",
   /** Editorial serif for quotes and luxury-style typography. */
   serif: "'Cormorant Garamond', Georgia, serif",
+  /** Collegiate block slab: jersey names, pennants, varsity patches. */
+  varsity: "Graduate, 'Big Shoulders Display', serif",
+  /** Tall condensed grotesk for stadium signage (use weight 800/900). */
+  stadium: "'Big Shoulders Display', 'Barlow Condensed', sans-serif",
+  /** Sports-broadcast condensed. Italic 700-900, or upright 600 for labels. */
+  broadcast: "'Barlow Condensed', 'Big Shoulders Display', sans-serif",
+  /** Chalkboard / marker handwriting. */
+  chalk: "'Caveat Brush', cursive",
+  /** Dot-matrix LED (weight 900 only). */
+  led: "Doto, 'JetBrains Mono', monospace",
 } as const;
 
 export const colors = {
@@ -75,4 +133,27 @@ export const colors = {
   inkWarm: "#0A0908",
   gold: "#C9A45C",
   goldLight: "#F3DEAE",
+} as const;
+
+/**
+ * Varsity Stadium palette (TrainingSeason reel): night navy, floodlight white,
+ * training volt, and the Kanso vermilion as the signal colour. Tartan and
+ * chalkboard are scene surfaces.
+ */
+export const stadium = {
+  night: "#050A18",
+  navy: "#0B1633",
+  navyMid: "#162A5C",
+  navyLight: "#2B4A9C",
+  steel: "#8796C0",
+  flood: "#F6F8FF",
+  volt: "#D7FF2E",
+  voltDeep: "#A6D400",
+  signal: "#FF5A36",
+  signalDeep: "#C7381C",
+  tartan: "#C9442C",
+  tartanDark: "#9E3020",
+  chalkboard: "#18302A",
+  chalk: "#EEF1E6",
+  leather: "#C8692E",
 } as const;
