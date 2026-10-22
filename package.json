@@ -8,6 +8,7 @@
   "dependencies": {
     "@remotion/cli": "4.0.532",
     "@remotion/fonts": "4.0.532",
+    "@remotion/layout-utils": "4.0.532",
     "@remotion/media": "4.0.532",
     "@remotion/media-utils": "4.0.532",
     "@remotion/shapes": "4.0.532",
