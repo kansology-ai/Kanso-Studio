@@ -401,7 +401,6 @@ const layoutLine = (
     return slot;
   });
   const end = Math.max(0, x - gap);
-  console.log("RIBBONDBG", key, JSON.stringify({ fsMax, squeezes, sizes, raw, slots: slots.map((q) => [q.w, q.d]) }));
   return {
     key,
     fs: fsMax,
