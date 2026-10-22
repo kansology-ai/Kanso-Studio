@@ -75,26 +75,26 @@ const STATS_TEXT = "122.95 BPM · 30 SEC · 9:16";
 
 /* Board geometry, design px. The LED face is centred on the board. */
 const BOARD_W = 1060;
-const BOARD_H = 1022;
+const BOARD_H = 1052;
 const BOARD_D = 150;
 const BAND = 46;
 const LED_W = BOARD_W - BAND * 2;
 const LED_H = BOARD_H - BAND * 2;
 const PAD = 48;
 /** Width lyric rows may use, so they stay inside the Reels safe area. */
-const LYRIC_W = 838;
+const LYRIC_W = 850;
 const FRONT_Z = BOARD_D / 2;
 /** Vertical stretch of the headline (tall stadium lettering). */
-const STRETCH = 1.2;
+const STRETCH = 1.48;
 
 /* Rows inside the LED face: cap-height centres (LED-local y, design px). */
 const ROW = {
-  cause: 82,
-  title: 316,
-  season: 578,
-  stats: 694,
-  divider: 736,
-  panel: 820,
+  cause: 94,
+  title: 390,
+  season: 628,
+  stats: 776,
+  divider: 810,
+  panel: 884,
 };
 /** Camera distance (design px from the board centre) once it has arrived. */
 const CLOSE = 1000;
@@ -107,11 +107,8 @@ const camAt = (t: number, reel: number, u: number) => {
   const io = { ...CLAMP, easing: EASE.inOut };
   // Fast dolly from a wide establishing shot to the close title framing,
   // arriving just before TRAINING; then a slow push to the drop.
-  const approach = interpolate(t, [0, 0.46], [0, 1], {
-    ...CLAMP,
-    easing: EASE.out,
-  });
-  const push = interpolate(t, [0.46, DROP], [0, 1], io);
+  const approach = 1 - (1 - Math.min(1, Math.max(0, t / 0.5))) ** 2.2;
+  const push = interpolate(t, [0.5, DROP], [0, 1], io);
   const kCause = kick(t, CUES[0] ?? 99);
   const kTitle = kick(t, CUES[1] ?? 99, 0.1);
   const kSeason = kick(t, CUES[2] ?? 99);
@@ -125,7 +122,7 @@ const camAt = (t: number, reel: number, u: number) => {
     azimuth: 32 - 19 * approach - 5 * push,
     elevation: -19 + 10 * approach + 1.5 * push,
     roll:
-      -8 + 7 * approach + interpolate(t, [0.46, 1.2, DROP], [0, 1.6, -0.6], io),
+      -8 + 7 * approach + interpolate(t, [0.5, 1.2, DROP], [0, 1.6, -0.6], io),
     focal: 950 * u,
   });
   const punched = dollyCamera(
@@ -138,7 +135,7 @@ const camAt = (t: number, reel: number, u: number) => {
       90 * kSeason +
       40 * kSticker +
       30 * kStats +
-      160 * kDrop) *
+      60 * kDrop) *
       u,
   );
   const build = interpolate(t, [BUILD, DROP], [0, 1], CLAMP);
@@ -711,8 +708,8 @@ const ScoreboardSceneInner: React.FC<ScoreboardSceneProps> = ({
 
   /* --- 'cause --- */
   const causeFs = cause
-    ? fitSize(cause, CAUSE_FONT, 540 * u, {
-        max: 132 * u,
+    ? fitSize(cause, CAUSE_FONT, 600 * u, {
+        max: 168 * u,
         min: 64 * u,
         letterSpacingEm: -0.01,
       })
@@ -721,7 +718,7 @@ const ScoreboardSceneInner: React.FC<ScoreboardSceneProps> = ({
   /* --- TRAINING (slot 2), letter by letter --- */
   const titleW = LYRIC_W * u;
   const capRatio = inkMetrics("H", TITLE_FONT, 100).ascent / 100 || 0.75;
-  const titleMaxFs = (330 * u) / (capRatio * STRETCH);
+  const titleMaxFs = (340 * u) / (capRatio * STRETCH);
   const titleFs = title
     ? fitSize(title, TITLE_FONT, titleW, { max: titleMaxFs })
     : 0;
@@ -754,7 +751,7 @@ const ScoreboardSceneInner: React.FC<ScoreboardSceneProps> = ({
     : 0;
   const seasonOffset = season ? capCenterOffset(SEASON_FONT, seasonFs) : 0;
   const seasonLeft = -(seasonTotal + tagRoom) / 2;
-  const arcR = 2200 * u;
+  const arcR = 3400 * u;
   const seasonCue = CUES[2];
   const tagCue = CUES[3];
 
@@ -796,7 +793,7 @@ const ScoreboardSceneInner: React.FC<ScoreboardSceneProps> = ({
     return (
       <Node3D
         key={`t${i}`}
-        x={x + side * 70 * u * fly + bo.x * u}
+        x={x * (1 - 0.45 * fly) + side * 40 * u * fly + bo.x * u}
         y={y + 50 * u * fly + bo.y * u}
         z={zFront + letterDepth + 2 * u + 230 * u * fly + bo.z * u}
         rx={-35 * fly + 10 * impact + bo.rx}
@@ -925,7 +922,7 @@ const ScoreboardSceneInner: React.FC<ScoreboardSceneProps> = ({
     season && lastSeason
       ? Math.min(
           seasonLeft + seasonTotal + tagW * 0.5,
-          (LYRIC_W / 2 + 40) * u - tagW / 2,
+          (LYRIC_W / 2 - 10) * u - tagW / 2,
         )
       : 0;
   const tagTheta = Math.asin(Math.max(-0.9, Math.min(0.9, tagX / arcR)));
@@ -945,7 +942,16 @@ const ScoreboardSceneInner: React.FC<ScoreboardSceneProps> = ({
   const tagBo = blastOffset(LED_W / 2 + tagX / u, ROW.season - 60, s, "sb-tag");
 
   // Clock module
-  const clockBo = blastOffset(LED_W / 2, ROW.panel, s, "sb-clock");
+  // The clock pops straight at the lens (and a little up) so 0:00.0 stays
+  // readable through the blast.
+  const clockBo = {
+    x: 0,
+    y: -4200 * s,
+    z: 9500 * s,
+    rx: -60 * s,
+    ry: 40 * s,
+    rz: -60 * s,
+  };
 
   // Drop flash and opening flash
   const openFlash = interpolate(t, [0, 0.15], [1, 0], {
