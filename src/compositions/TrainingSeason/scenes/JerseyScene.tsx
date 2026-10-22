@@ -53,7 +53,7 @@ const FLOOR = 1180;
 const S1: Vec3 = { x: 0, y: 0, z: 0 };
 const S2: Vec3 = { x: 1450, y: 330, z: -760 };
 /** Arched names are fitted to this chord width. */
-const WORD_CHORD = 980;
+const WORD_CHORD = 940;
 const FS_MAX = 500;
 const FS_MIN = 56;
 const CARD_W = 420;
