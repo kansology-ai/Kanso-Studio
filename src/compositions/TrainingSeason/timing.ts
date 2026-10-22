@@ -91,9 +91,13 @@ export const sceneLength = (key: SceneKey): number =>
   TRAINING_SEASON_TIMING.scenes[key].to -
   TRAINING_SEASON_TIMING.scenes[key].from;
 
-/** Convert absolute cue times to seconds relative to a scene's start. */
+/**
+ * Convert absolute cue times to seconds relative to a scene's start.
+ * Rounded to the microsecond so float noise (23.3 - 22 = 1.3000000000000007)
+ * never pushes a `t >= cue` hit one frame late.
+ */
 export const localCues = (scene: SceneKey, cues: readonly number[]): number[] =>
-  cues.map((t) => t - sceneStart(scene));
+  cues.map((t) => Math.round((t - sceneStart(scene)) * 1e6) / 1e6);
 
 /** Split a lyric line into slots: "READY / SET / GO" → ["READY","SET","GO"]. */
 export const splitSlots = (line: string): string[] =>
