@@ -714,10 +714,13 @@ const ScoreboardSceneInner: React.FC<ScoreboardSceneProps> = ({
     titleLetters.length > 1 ? 0.2 / (titleLetters.length - 1) : 0;
 
   /* --- SEASON (slot 3) on a jersey arch, then the 's sticker (slot 4) --- */
-  const tagFs = 92 * u;
+  const tagFs = tag
+    ? fitSize(tag, SEASON_FONT, 130 * u, { max: 92 * u, min: 40 * u })
+    : 0;
   const tagTextW = tag ? textWidth(tag, SEASON_FONT, tagFs) : 0;
   const tagW = tag ? Math.max(tagFs * 1.5, tagTextW + tagFs * 0.9) : 0;
-  const seasonRoom = LYRIC_W * u - (tag ? tagW * 0.85 : 0);
+  const tagRoom = tag ? tagW * 0.85 : 0;
+  const seasonRoom = LYRIC_W * u - tagRoom;
   const seasonFs = season
     ? fitSize(season, SEASON_FONT, seasonRoom, {
         max: 190 * u,
@@ -731,7 +734,7 @@ const ScoreboardSceneInner: React.FC<ScoreboardSceneProps> = ({
     ? textWidth(season, SEASON_FONT, seasonFs, 0.02)
     : 0;
   const seasonOffset = season ? capCenterOffset(SEASON_FONT, seasonFs) : 0;
-  const seasonLeft = -(seasonTotal + (tag ? tagW * 0.85 : 0)) / 2;
+  const seasonLeft = -(seasonTotal + tagRoom) / 2;
   const arcR = 2200 * u;
   const seasonCue = CUES[2];
   const tagCue = CUES[3];
@@ -854,7 +857,13 @@ const ScoreboardSceneInner: React.FC<ScoreboardSceneProps> = ({
 
   // 's sticker: pops after SEASON's last letter, tilted.
   const lastSeason = seasonLetters[seasonLetters.length - 1];
-  const tagX = season && lastSeason ? seasonLeft + seasonTotal + tagW * 0.5 : 0;
+  const tagX =
+    season && lastSeason
+      ? Math.min(
+          seasonLeft + seasonTotal + tagW * 0.5,
+          (LYRIC_W / 2 + 40) * u - tagW / 2,
+        )
+      : 0;
   const tagTheta = Math.asin(Math.max(-0.9, Math.min(0.9, tagX / arcR)));
   const tagY =
     ledY(ROW.season) -

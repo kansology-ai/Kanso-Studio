@@ -1061,14 +1061,14 @@ const JD = 110;
 const J_BORDER = 46;
 
 const Jumbotron: React.FC<{
-  readonly word: string;
+  readonly lines: string[];
   readonly fs: number;
   readonly squeeze: number;
   readonly u: number;
   readonly t: number;
   readonly reel: number;
   readonly pulse: number;
-}> = ({ word, fs, squeeze, u, t, reel, pulse }) => {
+}> = ({ lines, fs, squeeze, u, t, reel, pulse }) => {
   const w = JW * u;
   const h = JH * u;
   const band = J_BORDER * u;
@@ -1145,14 +1145,15 @@ const Jumbotron: React.FC<{
               fontFamily: fonts.stadium,
               fontWeight: 900,
               fontSize: fs,
-              lineHeight: 1,
+              lineHeight: lines.length > 1 ? 0.92 : 1,
+              textAlign: "center",
               color: stadium.flood,
               whiteSpace: "pre",
               scale: `${squeeze} 1`,
               textShadow: `0 0 ${0.04 * fs}px ${stadium.volt}, 0 0 ${0.2 * fs}px rgba(215,255,46,${0.45 + 0.3 * pulse})`,
             }}
           >
-            {word}
+            {lines.join("\n")}
           </div>
         </div>
         {/* LED dot mask */}
@@ -1335,20 +1336,44 @@ const MegaphoneSceneInner: React.FC<MegaphoneSceneProps> = ({
   const jumboCam = camPath(1.62, u);
   const jumboAnchor = fromView(jumboCam, v3(px(-28), px(-10), -px(1010)));
   const jumboInner = px(JW - 2 * J_BORDER - 70);
+  // Fit slot 2: one line if it can stay >= 160 px tall on screen (cap
+  // height), else squeeze it horizontally like an LED board does, and for
+  // long phrases break onto two balanced lines.
   let jumboFs = 0;
   let squeeze = 1;
+  let jumboLines: string[] = [wordB];
   if (wordB) {
-    const fitted = fitSize(wordB, JUMBO_FONT, jumboInner, { max: px(330) });
     const capRatio = inkMetrics("H", JUMBO_FONT, 100).ascent / 100 || 0.72;
     const minFs = px(178) / capRatio;
+    const innerH = px(JH - 2 * J_BORDER - 24);
+    const fitted = fitSize(wordB, JUMBO_FONT, jumboInner, { max: px(330) });
+    const oneLineSqueeze =
+      jumboInner / Math.max(1, textWidth(wordB, JUMBO_FONT, minFs));
+    const spaces = [...wordB.matchAll(/ /g)].map((m) => m.index ?? 0);
     if (fitted >= minFs) {
       jumboFs = fitted;
-    } else {
+    } else if (oneLineSqueeze >= 0.72 || spaces.length === 0) {
       jumboFs = minFs;
-      squeeze = jumboInner / Math.max(1, textWidth(wordB, JUMBO_FONT, minFs));
-      if (squeeze < 0.55) {
-        jumboFs = minFs * (squeeze / 0.55);
-        squeeze = 0.55;
+      squeeze = Math.max(0.5, oneLineSqueeze);
+      if (oneLineSqueeze < 0.5) jumboFs = minFs * (oneLineSqueeze / 0.5);
+    } else {
+      const mid = wordB.length / 2;
+      const cut = spaces.reduce((a, b) =>
+        Math.abs(b - mid) < Math.abs(a - mid) ? b : a,
+      );
+      jumboLines = [wordB.slice(0, cut), wordB.slice(cut + 1)];
+      const longest = jumboLines.reduce((a, b) =>
+        textWidth(a, JUMBO_FONT, 100) >= textWidth(b, JUMBO_FONT, 100) ? a : b,
+      );
+      jumboFs = Math.min(
+        innerH / (2 * 0.92),
+        fitSize(longest, JUMBO_FONT, jumboInner, { max: px(330) }),
+      );
+      if (jumboFs < minFs) {
+        const sq =
+          jumboInner / Math.max(1, textWidth(longest, JUMBO_FONT, minFs));
+        jumboFs = Math.min(minFs, innerH / (2 * 0.92));
+        squeeze = Math.max(0.5, Math.min(1, sq));
       }
     }
   }
@@ -1606,7 +1631,7 @@ const MegaphoneSceneInner: React.FC<MegaphoneSceneProps> = ({
                 rz={jumboCam.roll + interpolate(slam, [0, 1], [-7, 0])}
               >
                 <Jumbotron
-                  word={wordB}
+                  lines={jumboLines}
                   fs={jumboFs}
                   squeeze={squeeze}
                   u={u}

@@ -21,6 +21,17 @@ export type FontSpec = {
 const primaryFamily = (family: string): string =>
   family.split(",")[0].trim().replace(/^['"]|['"]$/g, "");
 
+const normWeight = (w: string | number): string => {
+  const v = String(w);
+  if (v === "normal") return "400";
+  if (v === "bold") return "700";
+  return v;
+};
+
+/**
+ * Is the face in document.fonts and loaded? (`document.fonts.check()` is
+ * true while no face is registered yet, so it cannot be trusted here.)
+ */
 const faceLoaded = (spec: FontSpec): boolean => {
   if (typeof document === "undefined" || !document.fonts) return true;
   const fam = primaryFamily(spec.family);
@@ -29,7 +40,7 @@ const faceLoaded = (spec: FontSpec): boolean => {
   document.fonts.forEach((f) => {
     if (
       f.family.replace(/^['"]|['"]$/g, "") === fam &&
-      String(f.weight) === String(spec.weight) &&
+      normWeight(f.weight) === normWeight(spec.weight) &&
       f.style === style &&
       f.status === "loaded"
     ) {

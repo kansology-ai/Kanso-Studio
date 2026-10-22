@@ -186,11 +186,16 @@ const LINE_SIZE: Record<LineKey, number> = {
   D: 0.94,
 };
 /** Camera height over the band (deg of look-down) and roll per line. */
-const LINE_FRAMING: Record<LineKey, { pitch: number; roll: number }> = {
-  A: { pitch: 8, roll: -3 },
-  B: { pitch: -6, roll: 3.5 },
-  C: { pitch: 5, roll: -4.5 },
-  D: { pitch: -7, roll: 2.5 },
+const LINE_FRAMING: Record<
+  LineKey,
+  { pitch: number; roll: number; aim: number }
+> = {
+  // aim: look-at height relative to the band centre, in band heights
+  // (negative looks above it, so lower boards show more stack, less floor).
+  A: { pitch: 8, roll: -3, aim: 0 },
+  B: { pitch: -6, roll: 3.5, aim: 0 },
+  C: { pitch: 5, roll: -4.5, aim: -0.25 },
+  D: { pitch: -7, roll: 2.5, aim: -0.45 },
 };
 
 const LED_FONT: RibbonFont = { family: fonts.led, weight: 900 };
@@ -293,6 +298,8 @@ type SlotLayout = {
   readonly d: number;
   /** Font size of this slot. */
   readonly fs: number;
+  /** Horizontal squeeze of the slot's text (LED boards only, else 1). */
+  readonly squeeze: number;
 };
 
 type LineLayout = {
@@ -345,18 +352,31 @@ const layoutLine = (
   const far = f / MIN_SCALE;
   // Each slot keeps the full board size unless it is too long to fit the
   // screen even at the farthest framing; then only that slot shrinks.
-  let sizes = raw.map((em) => {
+  // LED boards may run a long slot condensed before shrinking it.
+  const squeezeMin = key === "A" ? 0.72 : 1;
+  // Condense first (so a long slot keeps the camera close), down to the
+  // limit; only then pull the camera back or shrink the type.
+  const squeezes = raw.map((em) => {
+    const atComfort = arcScreenWidth(em * fsMax, ring.r, f, f);
+    return atComfort > target
+      ? Math.max(squeezeMin, (target / atComfort) * 0.995)
+      : 1;
+  });
+  let sizes = raw.map((em, i) => {
     let size = fsMax;
-    for (let k = 0; k < 3; k++) {
-      const atFar = arcScreenWidth(em * size, ring.r, far, f);
+    for (let k = 0; k < 4; k++) {
+      const atFar = arcScreenWidth(em * size * squeezes[i], ring.r, far, f);
       if (atFar <= target) break;
-      size *= (target / atFar) * 0.995;
+      const want = squeezes[i] * (target / atFar) * 0.995;
+      const sq = Math.max(squeezeMin, want);
+      size *= want / sq;
+      squeezes[i] = sq;
     }
     return size;
   });
   // The whole line must fit around the board.
   const lineLength = () =>
-    raw.reduce((a, em, i) => a + em * sizes[i], 0) +
+    raw.reduce((a, em, i) => a + em * sizes[i] * squeezes[i], 0) +
     Math.max(0, words.length - 1) * gapEm * fsMax;
   if (lineLength() > ring.c * 0.92) {
     const k = (ring.c * 0.92) / lineLength();
@@ -365,10 +385,11 @@ const layoutLine = (
   const gap = gapEm * Math.min(fsMax, ...sizes);
   let x = 0;
   const slots: SlotLayout[] = words.map((word, i) => {
-    const w = raw[i] * sizes[i];
+    const w = raw[i] * sizes[i] * squeezes[i];
     const slot: SlotLayout = {
       text: word,
       fs: sizes[i],
+      squeeze: squeezes[i],
       x,
       w,
       theta: ((x + w / 2) / ring.c) * 360,
@@ -380,6 +401,7 @@ const layoutLine = (
     return slot;
   });
   const end = Math.max(0, x - gap);
+  console.log("RIBBONDBG", key, JSON.stringify({ fsMax, squeezes, sizes, raw, slots: slots.map((q) => [q.w, q.d]) }));
   return {
     key,
     fs: fsMax,
@@ -483,7 +505,8 @@ const SlotWord: React.FC<{
   readonly w: number;
   readonly age: number;
   readonly fps: number;
-}> = ({ line, text, fs, h, w, age, fps }) => {
+  readonly squeeze?: number;
+}> = ({ line, text, fs, h, w, age, fps, squeeze = 1 }) => {
   if (age < 0) return <Standby h={h} />;
   const font = LINE_FONT[line];
   const box: React.CSSProperties = {
@@ -518,7 +541,7 @@ const SlotWord: React.FC<{
       <div style={box}>
         <div
           style={{
-            scale: String(pop),
+            scale: `${pop * squeeze} ${pop}`,
             clipPath: `inset(-40% ${(1 - wipe) * 100}% -40% -10%)`,
             translate: `0 ${fs * 0.035}px`,
           }}
@@ -803,13 +826,13 @@ const RibbonSceneInner: React.FC<RibbonSceneProps> = ({
     });
     // Slow creep in while the line plays.
     d *= 1 - 0.03 * Math.min(1, Math.max(0, t - lineStart(key)));
-    const { pitch, roll: baseRoll } = LINE_FRAMING[key];
+    const { pitch, roll: baseRoll, aim } = LINE_FRAMING[key];
     return {
       az: AZ(t),
       rho: ring.r + d,
       y: ring.y - d * Math.tan(pitch * DEG),
       tr: ring.r,
-      ty: ring.y,
+      ty: ring.y + aim * ring.h,
       f: f * (1 + zoom),
       roll: baseRoll + roll,
     };
@@ -1240,6 +1263,7 @@ const RibbonSceneInner: React.FC<RibbonSceneProps> = ({
               line={role}
               text={slot.text}
               fs={slot.fs}
+              squeeze={slot.squeeze}
               h={ring.h}
               w={slot.w}
               age={frame - slot.hit}

@@ -284,39 +284,86 @@ export type RibbonFont = {
 const fontString = (f: RibbonFont, size: number) =>
   `${f.italic ? "italic" : "normal"} ${f.weight} ${size}px ${f.family}`;
 
+const primaryFamily = (family: string): string =>
+  family
+    .split(",")[0]
+    .trim()
+    .replace(/^['"]|['"]$/g, "");
+
+const normWeight = (w: string | number): string => {
+  const v = String(w);
+  if (v === "normal") return "400";
+  if (v === "bold") return "700";
+  return v;
+};
+
 /**
- * True once every font can be measured. Holds the render with delayRender
- * until then, so no frame is ever captured with fallback measurements.
+ * Is a loaded FontFace for this font registered in document.fonts?
+ * `@remotion/fonts` only adds a face once it has loaded, and
+ * `document.fonts.check()` returns true while no face is registered at all,
+ * so check() cannot tell us when it is safe to measure.
+ */
+const faceLoaded = (f: RibbonFont): boolean => {
+  if (typeof document === "undefined") return false;
+  const family = primaryFamily(f.family);
+  const style = f.italic ? "italic" : "normal";
+  let found = false;
+  document.fonts.forEach((face) => {
+    if (
+      face.status === "loaded" &&
+      face.family.replace(/['"]/g, "") === family &&
+      normWeight(face.weight) === normWeight(f.weight) &&
+      face.style === style
+    ) {
+      found = true;
+    }
+  });
+  return found;
+};
+
+/**
+ * True once every font is loaded and registered, so measurements use the
+ * real faces. Holds the render with delayRender until then and re-renders
+ * when ready, so no frame is captured with fallback-font measurements.
  */
 export const useRibbonFontsReady = (list: readonly RibbonFont[]): boolean => {
-  const specs = list.map((f) => fontString(f, 100)).join("|");
-  const [ready, setReady] = useState(
-    () =>
-      typeof document !== "undefined" &&
-      specs.split("|").every((s) => document.fonts.check(s)),
-  );
+  const [ready, setReady] = useState(() => list.every(faceLoaded));
   const [handle] = useState(() =>
     ready ? null : delayRender("Ribbon scene: loading fonts for measuring"),
   );
   const released = useRef(false);
+  const listRef = useRef(list);
+
   useEffect(() => {
-    if (ready) {
-      if (handle !== null && !released.current) {
-        released.current = true;
-        continueRender(handle);
-      }
-      return;
-    }
+    if (ready) return;
     let alive = true;
-    Promise.all(specs.split("|").map((s) => document.fonts.load(s)))
-      .catch(() => undefined)
-      .then(() => {
-        if (alive) setReady(true);
-      });
+    const fonts = listRef.current;
+    // Ask the browser for each face, then wait until @remotion/fonts has
+    // registered the loaded face.
+    for (const f of fonts) {
+      document.fonts.load(fontString(f, 100)).catch(() => undefined);
+    }
+    const poll = () => {
+      if (!alive) return;
+      if (fonts.every(faceLoaded)) {
+        setReady(true);
+      } else {
+        setTimeout(poll, 30);
+      }
+    };
+    poll();
     return () => {
       alive = false;
     };
-  }, [handle, ready, specs]);
+  }, [ready]);
+
+  useEffect(() => {
+    if (ready && handle !== null && !released.current) {
+      released.current = true;
+      continueRender(handle);
+    }
+  }, [ready, handle]);
+
   return ready;
 };
 
