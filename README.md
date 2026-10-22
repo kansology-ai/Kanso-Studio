@@ -51,6 +51,7 @@ src/
   components/           AnimatedTitle, Eyebrow, Typewriter, Background, FloatingShapes, FeatureCard, AudioSpectrum
   compositions/Showcase sample video + scenes/
   compositions/QuoteWallpaper  phone wallpaper: still, 10 s animation, and 3 s iPhone Live Photo cut (BreachWallpaperLive)
+  compositions/TrainingSeason  30 s 9:16 kinetic-typography lyric reel on a CSS 3D engine (lib/camera3d.ts, components/Stage3D, Solids3D)
 public/                 audio/, images/, fonts/ (reference with staticFile())
 scripts/                new-composition scaffolder
 .agents/skills/         official Remotion agent skills (symlinked into .claude/skills/)

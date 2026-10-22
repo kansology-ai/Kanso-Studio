@@ -24,6 +24,7 @@ The official agent skills (`remotion-dev/skills`) are installed in `.agents/skil
 | Render a wallpaper / still image | `npx remotion still BreachWallpaper out/wallpaper.png` (add `--width=1080 --height=1920` for other phones) |
 | Render the animated wallpaper | `npx remotion render BreachWallpaperAnimated out/wallpaper.mp4 --crf=16` |
 | Render the 3 s iPhone Live Photo cut | `npx remotion render BreachWallpaperLive out/wallpaper-live.mp4 --crf=16` (convert on the iPhone with a video-to-Live-Photo app) |
+| Render the 9:16 lyric reel (silent, for Instagram) | `npx remotion render TrainingSeason out/training-season.mp4 --crf=16` |
 | Render a few frames as images | `npx remotion render Showcase out/frames --sequence --image-format=jpeg --frames=30,90,150` |
 | One-off format override | `npx remotion render Showcase out/vertical.mp4 --width=1080 --height=1920` |
 | Override props from the CLI | `npx remotion render Showcase out/hello.mp4 --props='{"title":"Hello"}'` (merged over `defaultProps`) |
@@ -43,6 +44,7 @@ src/
   theme.ts                 colors + fonts (local files loaded with @remotion/fonts)
   lib/animation.ts         EASE / SPRING presets, progress, springIn, fadeInOut, stagger, drift
   lib/layout.ts            useLayout(): px() resolution-independent sizing, safe margins
+  lib/camera3d.ts          pinhole camera matching CSS 3D: project(), lookAt/orbit/aim, shake()
   components/              reusable building blocks (import from "../components")
     AnimatedTitle.tsx      word-by-word masked reveal with highlight words
     Eyebrow.tsx            uppercase label, tracking tightens as it fades in
@@ -51,11 +53,18 @@ src/
     FloatingShapes.tsx     @remotion/shapes that pop in, drift and rotate
     FeatureCard.tsx        spring-in card with icon, title, description
     AudioSpectrum.tsx      audio-reactive bars (visualizeAudio)
+    Stage3D.tsx            CSS 3D world seen through a Camera: Node3D, Billboard, Plane3D, useStage()
+    Solids3D.tsx           ExtrudedText, Box3D, Ring3D (text wrapped around a cylinder band)
   compositions/
     Showcase/
       Showcase.tsx         parent video: TransitionSeries of scenes + optional audio, zod schema
       scenes/              one file per scene (IntroScene, FeaturesScene, OutroScene)
     QuoteWallpaper/        quote wallpaper, `mode` prop: still (BreachWallpaper), reveal (BreachWallpaperAnimated), livePhoto (BreachWallpaperLive)
+    TrainingSeason/        30 s 9:16 lyric reel, "Varsity Stadium" style
+      timing.ts            cue sheet in seconds (122.95 BPM): scene spans, lyric cues, beat accents
+      TrainingSeason.tsx   8 hard-cut scenes + score bug HUD + optional song track for sync checks
+      kit/                 shared look: StadiumSky, FieldFloor, LedText, WhipBlur, BroadcastFinish, beat clock
+      scenes/              one file per scene (Jersey, Vault, Ribbon, Tickets, Chalk, Megaphone, Scoreboard, Balls)
 public/
   audio/  images/          put assets here; reference with staticFile("audio/track.mp3")
   fonts/                   bundled .woff2 files + OFL licenses
@@ -111,6 +120,16 @@ To add a weight or family:
 3. Keep its licence in `public/fonts/licenses`.
 
 `@remotion/google-fonts` also works on a normal machine (see the fonts skill), but it fetches at render time.
+
+### 3D (CSS, no WebGL)
+
+`Stage3D` renders DOM planes in a real perspective camera, and `project()` from `lib/camera3d.ts` maps world points to the same pixels, so you can mix DOM solids with JS-drawn sprites (balls, particles, SVG lines). World axes follow CSS: +x right, **+y down**, +z toward the viewer. Build cameras with `orbitCamera` / `aimCamera`, blend with `mixCamera`, add `shake()`. Filters flatten 3D: put blur on a wrapper around `Stage3D`, never on nodes inside it.
+
+### TrainingSeason lyric reel
+
+- Lyric fields in `defaultProps` are **placeholders**. Replace each with the song's line, keeping the same number of ` / `-separated slots: each slot lands on its cue in `timing.ts`. In the `tickets` field, split the last word into syllables with `-`.
+- To check sync, put the song in `public/audio/` and set `audioSrc` (and `audioStartSeconds` to where the first lyric starts in the file). Render without audio for Instagram and add the track in the app, lined up with the first word.
+- Scenes read cues from `TRAINING_SEASON_TIMING`; move a cue there and its scene follows.
 
 ## Recipes
 
