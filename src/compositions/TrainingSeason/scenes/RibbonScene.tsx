@@ -30,7 +30,7 @@ import {
   SONG,
   TRAINING_SEASON_TIMING,
   sceneLength,
-  sceneStart,
+  localCues,
   splitSlots,
 } from "../timing";
 
@@ -45,21 +45,19 @@ import {
  */
 
 const T = TRAINING_SEASON_TIMING;
-const START = sceneStart("ribbon");
 const LENGTH = sceneLength("ribbon");
-const local = (reel: number) => reel - START;
-const BOOT = T.accents.ribbonBoot.map(local);
-const REVEAL = T.accents.ribbonReveal.map(local);
+const BOOT = localCues("ribbon", T.accents.ribbonBoot);
+const REVEAL = localCues("ribbon", T.accents.ribbonReveal);
 const BPM = SONG.bpm.toFixed(2);
 const DEG = Math.PI / 180;
 
 type LineKey = "A" | "B" | "C" | "D";
 const LINE_KEYS: LineKey[] = ["A", "B", "C", "D"];
 const CUES: Record<LineKey, number[]> = {
-  A: T.cues.ribbonA.map(local),
-  B: T.cues.ribbonB.map(local),
-  C: T.cues.ribbonC.map(local),
-  D: T.cues.ribbonD.map(local),
+  A: localCues("ribbon", T.cues.ribbonA),
+  B: localCues("ribbon", T.cues.ribbonB),
+  C: localCues("ribbon", T.cues.ribbonC),
+  D: localCues("ribbon", T.cues.ribbonD),
 };
 
 /* ------------------------------------------------------------------ */
@@ -973,7 +971,7 @@ const RibbonSceneInner: React.FC<RibbonSceneProps> = ({
   const bootDone = t >= BOOT[7];
   const lights = bootDone
     ? interpolate(t, [BOOT[7], BOOT[7] + 0.15], [0.62, 1], CLAMP)
-    : 0.06 +
+    : 0.1 +
       BOOT.slice(0, 7).reduce(
         (acc, b) => acc + 0.08 * interpolate(t, [b, b + 0.12], [0, 1], CLAMP),
         0,
@@ -1244,7 +1242,7 @@ const RibbonSceneInner: React.FC<RibbonSceneProps> = ({
           ["--glow" as string]:
             "0 0 0.1em currentColor, 0 0 0.3em currentColor",
         },
-        content: lit ? 0.7 : 0,
+        content: lit ? 0.9 : 0,
         overlay: overlays.length ? overlays : undefined,
       };
     };
