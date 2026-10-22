@@ -10,7 +10,13 @@ import {
 import { Box3D, ExtrudedText } from "../../../components/Solids3D";
 import { Node3D, Stage3D } from "../../../components/Stage3D";
 import { CLAMP, EASE, SPRING } from "../../../lib/animation";
-import { noise1, orbitCamera, shake, vec3 as vec } from "../../../lib/camera3d";
+import {
+  noise1,
+  orbitCamera,
+  project,
+  shake,
+  vec3 as vec,
+} from "../../../lib/camera3d";
 import { useLayout } from "../../../lib/layout";
 import { fonts, stadium } from "../../../theme";
 import { beatPulse, useSceneClock } from "../kit/beat";
@@ -69,27 +75,29 @@ const STATS_TEXT = "122.95 BPM · 30 SEC · 9:16";
 
 /* Board geometry, design px. The LED face is centred on the board. */
 const BOARD_W = 1060;
-const BOARD_H = 1280;
+const BOARD_H = 1022;
 const BOARD_D = 150;
 const BAND = 46;
 const LED_W = BOARD_W - BAND * 2;
 const LED_H = BOARD_H - BAND * 2;
 const PAD = 48;
 /** Width lyric rows may use, so they stay inside the Reels safe area. */
-const LYRIC_W = 760;
+const LYRIC_W = 838;
 const FRONT_Z = BOARD_D / 2;
 /** Vertical stretch of the headline (tall stadium lettering). */
-const STRETCH = 1.3;
+const STRETCH = 1.2;
 
-/* Rows inside the LED face (LED-local y, design px). */
+/* Rows inside the LED face: cap-height centres (LED-local y, design px). */
 const ROW = {
-  cause: 52,
-  title: 362,
-  season: 664,
-  stats: 836,
-  divider: 876,
-  panel: 900,
+  cause: 82,
+  title: 316,
+  season: 578,
+  stats: 694,
+  divider: 736,
+  panel: 820,
 };
+/** Camera distance (design px from the board centre) once it has arrived. */
+const CLOSE = 1000;
 
 /* ------------------------------------------------------------------ */
 /* Camera                                                              */
@@ -97,8 +105,13 @@ const ROW = {
 
 const camAt = (t: number, reel: number, u: number) => {
   const io = { ...CLAMP, easing: EASE.inOut };
-  const dropIn = 300 * Math.exp(-t / 0.13);
-  const push = interpolate(t, [0, DROP], [0, 1], io);
+  // Fast dolly from a wide establishing shot to the close title framing,
+  // arriving just before TRAINING; then a slow push to the drop.
+  const approach = interpolate(t, [0, 0.46], [0, 1], {
+    ...CLAMP,
+    easing: EASE.out,
+  });
+  const push = interpolate(t, [0.46, DROP], [0, 1], io);
   const kCause = kick(t, CUES[0] ?? 99);
   const kTitle = kick(t, CUES[1] ?? 99, 0.1);
   const kSeason = kick(t, CUES[2] ?? 99);
@@ -106,11 +119,13 @@ const camAt = (t: number, reel: number, u: number) => {
   const kStats = kick(t, STATS, 0.07);
   const kDrop = kick(t, DROP - 1 / 30, 0.08);
   const base = orbitCamera({
-    target: vec(40 * u, -40 * u, 0),
-    distance: (1230 - 230 * push + dropIn) * u,
-    azimuth: interpolate(t, [0, DROP], [-6, 4], io),
-    elevation: interpolate(t, [0, DROP], [-10, -7.5], io),
-    roll: interpolate(t, [0, 1.2, DROP], [-2.5, 1, -1], io),
+    target: vec(0, -6 * u, 0),
+    distance: (4200 + (CLOSE - 4200) * approach - 70 * push) * u,
+    // Low and to the right, so the navy sides of the letters show.
+    azimuth: 32 - 19 * approach - 5 * push,
+    elevation: -19 + 10 * approach + 1.5 * push,
+    roll:
+      -8 + 7 * approach + interpolate(t, [0.46, 1.2, DROP], [0, 1.6, -0.6], io),
     focal: 950 * u,
   });
   const punched = dollyCamera(
@@ -119,7 +134,7 @@ const camAt = (t: number, reel: number, u: number) => {
     0,
     (16 * beatPulse(reel, 9) +
       40 * kCause +
-      150 * kTitle +
+      90 * kTitle +
       90 * kSeason +
       40 * kSticker +
       30 * kStats +
@@ -153,7 +168,7 @@ const camAt = (t: number, reel: number, u: number) => {
 
 const SHATTER_START = DROP - 1 / 30;
 const S_COLS = 6;
-const S_ROWS = 8;
+const S_ROWS = 7;
 
 type Shard = {
   readonly pts: [number, number][];
@@ -199,8 +214,8 @@ const SHARDS: Shard[] = (() => {
         const cx = (pts[0][0] + pts[1][0] + pts[2][0]) / 3;
         const cy = (pts[0][1] + pts[1][1] + pts[2][1]) / 3;
         const r = random(`sb-col-${id}`);
-        const inTitle = cy > ROW.title - 150 && cy < ROW.title + 170;
-        const inSeason = cy > ROW.season - 110 && cy < ROW.season + 110;
+        const inTitle = Math.abs(cy - ROW.title) < 165;
+        const inSeason = Math.abs(cy - ROW.season) < 80;
         const color = inTitle
           ? r < 0.7
             ? stadium.flood
@@ -286,7 +301,7 @@ const BoardFace: React.FC<{
   const strobe = t >= BUILD;
   const bulbs: { x: number; y: number }[] = [];
   const nx = 18;
-  const ny = 22;
+  const ny = 18;
   for (let i = 0; i < nx; i++)
     bulbs.push({ x: band / 2 + ((W - band) * i) / nx, y: band / 2 });
   for (let i = 0; i < ny; i++)
@@ -307,6 +322,10 @@ const BoardFace: React.FC<{
       })
     : 0;
   const causeW = cause ? textWidth(cause, CAUSE_FONT, causeFs, -0.01) : 0;
+  const causeTop =
+    ROW.cause * u -
+    causeFs / 2 -
+    (cause ? capCenterOffset(CAUSE_FONT, causeFs) : 0);
   const ruleFrom = (PAD + 26) * u + causeW;
   const ruleTo = (LED_W - PAD) * u;
   const rule = causeOn
@@ -325,8 +344,8 @@ const BoardFace: React.FC<{
       CLAMP,
     ),
   );
-  const statsFs = fitSize(STATS_TEXT, LED_FONT, (LED_W - PAD * 2) * u, {
-    max: 58 * u,
+  const statsFs = fitSize(STATS_TEXT, LED_FONT, LYRIC_W * u, {
+    max: 54 * u,
   });
   const cursorOn =
     t >= STATS &&
@@ -345,7 +364,7 @@ const BoardFace: React.FC<{
   const panelLabel: React.CSSProperties = {
     fontFamily: fonts.broadcast,
     fontWeight: 600,
-    fontSize: 34 * u,
+    fontSize: 30 * u,
     letterSpacing: 4 * u,
     color: stadium.steel,
     lineHeight: 1,
@@ -431,7 +450,7 @@ const BoardFace: React.FC<{
                   style={{
                     position: "absolute",
                     left: PAD * u,
-                    top: ROW.cause * u,
+                    top: causeTop,
                     fontFamily: fonts.broadcast,
                     fontStyle: "italic",
                     fontWeight: 800,
@@ -451,9 +470,9 @@ const BoardFace: React.FC<{
                   style={{
                     position: "absolute",
                     left: ruleFrom,
-                    top: ROW.cause * u + causeFs * 0.5,
+                    top: ROW.cause * u - 5 * u,
                     width: Math.max(0, ruleTo - ruleFrom) * rule,
-                    height: 8 * u,
+                    height: 10 * u,
                     background: stadium.volt,
                     boxShadow: `0 0 ${14 * u}px rgba(215,255,46,0.7)`,
                   }}
@@ -463,9 +482,9 @@ const BoardFace: React.FC<{
                     position: "absolute",
                     left:
                       ruleFrom + Math.max(0, ruleTo - ruleFrom) * rule - 9 * u,
-                    top: ROW.cause * u + causeFs * 0.5 - 5 * u,
-                    width: 18 * u,
-                    height: 18 * u,
+                    top: ROW.cause * u - 11 * u,
+                    width: 22 * u,
+                    height: 22 * u,
                     borderRadius: "50%",
                     background: stadium.volt,
                     opacity: rule > 0.02 ? 1 : 0,
@@ -479,7 +498,7 @@ const BoardFace: React.FC<{
               <div
                 style={{
                   position: "absolute",
-                  left: PAD * u,
+                  left: ((LED_W - LYRIC_W) / 2) * u,
                   top: ROW.stats * u - statsFs / 2,
                   display: "flex",
                   alignItems: "center",
@@ -515,8 +534,8 @@ const BoardFace: React.FC<{
             {/* Scoreboard panel: HOME / AWAY (the clock is its own module) */}
             {(
               [
-                ["HOME", "24", 170],
-                ["AWAY", "30", LED_W - 170],
+                ["HOME", "24", 150],
+                ["AWAY", "30", LED_W - 150],
               ] as const
             ).map(([label, score, x]) => (
               <div
@@ -525,35 +544,23 @@ const BoardFace: React.FC<{
                   position: "absolute",
                   left: (x - 150) * u,
                   width: 300 * u,
-                  top: (ROW.panel + 18) * u,
+                  top: (ROW.panel - 64) * u,
                   display: "flex",
                   flexDirection: "column",
                   alignItems: "center",
-                  gap: 18 * u,
+                  gap: 10 * u,
                 }}
               >
                 <div style={panelLabel}>{label}</div>
                 <LedText
                   color={stadium.flood}
                   glow={0.7}
-                  style={{ fontSize: 118 * u }}
+                  style={{ fontSize: 88 * u }}
                 >
                   {score}
                 </LedText>
               </div>
             ))}
-            <div
-              style={{
-                ...panelLabel,
-                position: "absolute",
-                left: 0,
-                right: 0,
-                textAlign: "center",
-                top: (ROW.panel + 18) * u,
-              }}
-            >
-              QTR <span style={{ color: stadium.volt }}>4</span>
-            </div>
             {/* Glass sweeps */}
             {[sweep, sweep2].map((s, i) => (
               <div
@@ -614,8 +621,8 @@ const ClockModule: React.FC<{
   readonly t: number;
   readonly pulse: number;
 }> = ({ u, t, pulse }) => {
-  const w = 360 * u;
-  const h = 150 * u;
+  const w = 340 * u;
+  const h = 132 * u;
   const remaining = DROP - t;
   const last = remaining < 0.75;
   return (
@@ -641,13 +648,25 @@ const ClockModule: React.FC<{
               flexDirection: "column",
               alignItems: "center",
               justifyContent: "center",
-              gap: 10 * u,
+              gap: 6 * u,
             }}
           >
+            <div
+              style={{
+                fontFamily: fonts.broadcast,
+                fontWeight: 600,
+                fontSize: 28 * u,
+                letterSpacing: 4 * u,
+                lineHeight: 1,
+                color: stadium.steel,
+              }}
+            >
+              QTR <span style={{ color: stadium.volt }}>4</span>
+            </div>
             <LedText
               color={last ? stadium.signal : stadium.volt}
               glow={0.8 + (last ? 0.5 * pulse : 0)}
-              style={{ fontSize: 70 * u }}
+              style={{ fontSize: 64 * u }}
             >
               {clockText(remaining)}
             </LedText>
@@ -672,7 +691,7 @@ const ScoreboardSceneInner: React.FC<ScoreboardSceneProps> = ({
   style,
 }) => {
   const { t, reel, frame, fps, pulse, phase } = useSceneClock(KEY);
-  const { px, unit: u } = useLayout();
+  const { px, unit: u, width, height } = useLayout();
   useFontsReady(FONT_SPECS);
   const slots = splitSlots(words);
   const [cause = "", title = "", season = "", tag = ""] = slots;
@@ -692,9 +711,9 @@ const ScoreboardSceneInner: React.FC<ScoreboardSceneProps> = ({
 
   /* --- 'cause --- */
   const causeFs = cause
-    ? fitSize(cause, CAUSE_FONT, 420 * u, {
-        max: 104 * u,
-        min: 40 * u,
+    ? fitSize(cause, CAUSE_FONT, 540 * u, {
+        max: 132 * u,
+        min: 64 * u,
         letterSpacingEm: -0.01,
       })
     : 0;
@@ -702,7 +721,7 @@ const ScoreboardSceneInner: React.FC<ScoreboardSceneProps> = ({
   /* --- TRAINING (slot 2), letter by letter --- */
   const titleW = LYRIC_W * u;
   const capRatio = inkMetrics("H", TITLE_FONT, 100).ascent / 100 || 0.75;
-  const titleMaxFs = (300 * u) / (capRatio * STRETCH);
+  const titleMaxFs = (330 * u) / (capRatio * STRETCH);
   const titleFs = title
     ? fitSize(title, TITLE_FONT, titleW, { max: titleMaxFs })
     : 0;
@@ -719,7 +738,7 @@ const ScoreboardSceneInner: React.FC<ScoreboardSceneProps> = ({
     : 0;
   const tagTextW = tag ? textWidth(tag, SEASON_FONT, tagFs) : 0;
   const tagW = tag ? Math.max(tagFs * 1.5, tagTextW + tagFs * 0.9) : 0;
-  const tagRoom = tag ? tagW * 0.85 : 0;
+  const tagRoom = tag ? tagW * 0.62 : 0;
   const seasonRoom = LYRIC_W * u - tagRoom;
   const seasonFs = season
     ? fitSize(season, SEASON_FONT, seasonRoom, {
@@ -739,7 +758,7 @@ const ScoreboardSceneInner: React.FC<ScoreboardSceneProps> = ({
   const seasonCue = CUES[2];
   const tagCue = CUES[3];
 
-  const letterDepth = 56 * u;
+  const letterDepth = 120 * u;
   const zFront = FRONT_Z * u;
 
   const titleNodes = titleLetters.map((l, i) => {
@@ -747,16 +766,16 @@ const ScoreboardSceneInner: React.FC<ScoreboardSceneProps> = ({
     const t0 = titleCue + i * titleStagger;
     if (t < t0) return null;
     const age = t - t0;
-    const fly = interpolate(age, [0, 0.09], [1, 0], {
+    const fly = interpolate(age, [0, 0.08], [1, 0], {
       ...CLAMP,
       easing: EASE.in,
     });
     const settle = spring({
-      frame: (age - 0.09) * fps,
+      frame: (age - 0.08) * fps,
       fps,
       config: SPRING.snappy,
     });
-    const impact = age >= 0.09 ? 1 - settle : 0;
+    const impact = age >= 0.08 ? 1 - settle : 0;
     const x = -titleTotal / 2 + l.left + l.width / 2;
     const y = ledY(ROW.title) - titleOffset * STRETCH;
     const lx = LED_W / 2 + x / u;
@@ -765,23 +784,30 @@ const ScoreboardSceneInner: React.FC<ScoreboardSceneProps> = ({
     // A volt glint chases across the word on every beat once it has landed.
     const settled = titleCue !== undefined && t > titleCue + 0.4 && s <= 0;
     const glint = settled
-      ? Math.exp(-((phase * (titleLetters.length + 3) - 1.5 - i) ** 2) / 0.6)
+      ? Math.exp(-((phase * (titleLetters.length + 4) - 2 - i) ** 2) / 1.3)
       : 0;
+    const top = mixColor(stadium.flood, stadium.volt, 0.85 * glint);
+    const mid = mixColor(stadium.flood, stadium.volt, 0.7 * glint);
+    const low = mixColor(
+      mixColor(stadium.flood, stadium.steel, 0.3),
+      stadium.voltDeep,
+      0.6 * glint,
+    );
     return (
       <Node3D
         key={`t${i}`}
-        x={x + side * 90 * u * fly + bo.x * u}
-        y={y + 70 * u * fly + bo.y * u}
-        z={zFront + letterDepth + 2 * u + 340 * u * fly + bo.z * u}
+        x={x + side * 70 * u * fly + bo.x * u}
+        y={y + 50 * u * fly + bo.y * u}
+        z={zFront + letterDepth + 2 * u + 230 * u * fly + bo.z * u}
         rx={-35 * fly + 10 * impact + bo.rx}
         ry={side * 40 * fly + bo.ry}
         rz={side * 30 * fly + bo.rz}
-        scale={1 + 0.1 * impact + 0.5 * fly}
+        scale={1 + 0.1 * impact + 0.3 * fly}
       >
         <div style={{ transformStyle: "preserve-3d", scale: `1 ${STRETCH}` }}>
           <ExtrudedText
             depth={letterDepth}
-            layers={12}
+            layers={18}
             face={stadium.flood}
             sideLight={stadium.navyLight}
             sideDark={stadium.night}
@@ -791,13 +817,13 @@ const ScoreboardSceneInner: React.FC<ScoreboardSceneProps> = ({
               fontSize: titleFs,
             }}
             faceStyle={{
-              backgroundImage: `linear-gradient(180deg, #FFFFFF 0%, ${stadium.flood} 55%, ${mixColor(stadium.flood, stadium.steel, 0.3)} 100%)`,
+              backgroundImage: `linear-gradient(180deg, ${glint > 0.02 ? top : "#FFFFFF"} 0%, ${mid} 55%, ${low} 100%)`,
               WebkitBackgroundClip: "text",
               backgroundClip: "text",
               color: "transparent",
               filter:
                 glint > 0.02
-                  ? `drop-shadow(0 0 ${(14 * glint * u).toFixed(1)}px rgba(215,255,46,${(0.95 * glint).toFixed(2)}))`
+                  ? `drop-shadow(0 0 ${(30 * glint * u).toFixed(1)}px rgba(215,255,46,${Math.min(1, 1.1 * glint).toFixed(2)}))`
                   : undefined,
             }}
           >
@@ -807,6 +833,44 @@ const ScoreboardSceneInner: React.FC<ScoreboardSceneProps> = ({
       </Node3D>
     );
   });
+
+  // Flood-white bloom where each letter slams into the board, plus one
+  // wide bloom when the last letter lands.
+  const blooms: { x: number; y: number; r: number; o: number }[] = [];
+  if (titleCue !== undefined && s <= 0) {
+    const zFace = zFront + letterDepth + 2 * u;
+    const yRow = ledY(ROW.title) + by;
+    titleLetters.forEach((l, i) => {
+      const hitT = titleCue + i * titleStagger + 0.08;
+      const k = kick(t, hitT, 0.09);
+      if (k < 0.02 || l.char === " ") return;
+      const pr = project(
+        vec(-titleTotal / 2 + l.left + l.width / 2 + bx, yRow, zFace),
+        cam,
+      );
+      if (!pr.visible) return;
+      blooms.push({
+        x: width / 2 + pr.x,
+        y: height / 2 + pr.y,
+        r: titleFs * STRETCH * 0.9 * pr.scale,
+        o: 0.9 * k,
+      });
+    });
+    const lastHit =
+      titleCue + Math.max(0, titleLetters.length - 1) * titleStagger + 0.08;
+    const kw = kick(t, lastHit, 0.14);
+    if (kw > 0.02 && title) {
+      const pr = project(vec(bx, yRow, zFace), cam);
+      if (pr.visible) {
+        blooms.push({
+          x: width / 2 + pr.x,
+          y: height / 2 + pr.y,
+          r: titleTotal * 0.75 * pr.scale,
+          o: 0.75 * kw,
+        });
+      }
+    }
+  }
 
   const seasonNodes = seasonLetters.map((l, i) => {
     if (seasonCue === undefined || l.char === " ") return null;
@@ -830,14 +894,14 @@ const ScoreboardSceneInner: React.FC<ScoreboardSceneProps> = ({
         key={`s${i}`}
         x={x - (1 - k) * 380 * trail * u + bo.x * u}
         y={ledY(ROW.season) + arcY - seasonOffset + bo.y * u}
-        z={zFront + 44 * u + 2 * u + (1 - k) * 160 * u + bo.z * u}
+        z={zFront + 62 * u + 2 * u + (1 - k) * 160 * u + bo.z * u}
         rx={bo.rx}
         ry={(1 - k) * -24 + bo.ry}
         rz={(theta * 180) / Math.PI + (1 - k) * -14 + bo.rz}
       >
         <ExtrudedText
-          depth={44 * u}
-          layers={11}
+          depth={62 * u}
+          layers={13}
           face={stadium.volt}
           sideLight={stadium.navyMid}
           sideDark={stadium.night}
@@ -881,7 +945,7 @@ const ScoreboardSceneInner: React.FC<ScoreboardSceneProps> = ({
   const tagBo = blastOffset(LED_W / 2 + tagX / u, ROW.season - 60, s, "sb-tag");
 
   // Clock module
-  const clockBo = blastOffset(LED_W / 2, ROW.panel + 130, s, "sb-clock");
+  const clockBo = blastOffset(LED_W / 2, ROW.panel, s, "sb-clock");
 
   // Drop flash and opening flash
   const openFlash = interpolate(t, [0, 0.15], [1, 0], {
@@ -900,7 +964,7 @@ const ScoreboardSceneInner: React.FC<ScoreboardSceneProps> = ({
     <AbsoluteFill style={{ background: stadium.night, ...style }}>
       <StadiumSky camera={cam} seconds={reel} pulse={pulse} horizon={0.55} />
       <Stage3D camera={cam}>
-        <FieldFloor y={px(1900)} z={px(600)} />
+        <FieldFloor y={px(BOARD_H / 2 + 1200)} z={px(600)} />
         <Node3D x={bx} y={by}>
           <div
             style={{
@@ -1000,7 +1064,7 @@ const ScoreboardSceneInner: React.FC<ScoreboardSceneProps> = ({
             {/* Clock module */}
             <Node3D
               x={clockBo.x * u}
-              y={ledY(ROW.panel + 130) + clockBo.y * u}
+              y={ledY(ROW.panel) + clockBo.y * u}
               z={zFront + px(14) + clockBo.z * u}
               rx={clockBo.rx}
               ry={clockBo.ry}
@@ -1093,6 +1157,24 @@ const ScoreboardSceneInner: React.FC<ScoreboardSceneProps> = ({
           </div>
         </Node3D>
       </Stage3D>
+      {blooms.map((b, i) => (
+        <div
+          key={`bloom-${i}`}
+          style={{
+            position: "absolute",
+            left: b.x - b.r,
+            top: b.y - b.r * 0.62,
+            width: b.r * 2,
+            height: b.r * 1.24,
+            borderRadius: "50%",
+            background:
+              "radial-gradient(closest-side, rgba(255,255,255,0.95) 0%, rgba(246,248,255,0.55) 35%, rgba(246,248,255,0) 100%)",
+            opacity: b.o,
+            mixBlendMode: "screen",
+            pointerEvents: "none",
+          }}
+        />
+      ))}
       {/* Light bursting out of the board at the drop */}
       {bloom > 0 ? (
         <AbsoluteFill
